@@ -132,6 +132,8 @@ let seconds = 0;   // عدد الثواني اللي عدت
 
 let ajzaElement = document.getElementById("ajza");
 let juzList = document.querySelector("#juzList");
+let pages = document.querySelector(".chat");
+
 ajzaElement.onclick = () => {
     Array.from(juzList.children)
          .reverse()
@@ -152,11 +154,17 @@ if(!localStorage.getItem("reverse")) {
     localStorage.setItem("reverse", "false");
 }
 
+if(!localStorage.getItem("scroll")) {
+    localStorage.setItem("scroll", "0");
+}
+
 async function loadData() {
     pagesData = await fetch("./القرآن كتابة/pages.json").then(r => r.json());
     quranData = await fetch("./القرآن كتابة/whole_quran_tashkeel.json").then(r => r.json());
     buildSidebar();
     active_juz(parseInt(localStorage.getItem("active-juz")));
+    
+    pages.scrollTop = parseInt(localStorage.getItem("scroll"));
 }
 
 function buildSidebar() {
@@ -169,6 +177,7 @@ function buildSidebar() {
         div.innerText = "الجزء " + i;
         div.onclick = function () {
             active_juz(i);
+            localStorage.setItem("scroll", "0");
         };
 
         juzList.appendChild(div);
@@ -300,6 +309,10 @@ function to_arabic_num(num) {
     }
 
     return num;
+}
+
+pages.onscroll = () => {
+    localStorage.setItem("scroll", pages.scrollTop);
 }
 
 const slider = document.getElementById("fontSlider");
