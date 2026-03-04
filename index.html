@@ -30,6 +30,14 @@ body {
     border-bottom: 1px solid #334155;
 }
 
+.sidebar #juzList {
+    padding-bottom: 400px;
+}
+
+#ajza {
+    cursor: pointer;
+}
+
 .juz {
     padding: 12px;
     cursor: pointer;
@@ -40,6 +48,11 @@ body {
 .juz:hover {
     background: #334155;
 }
+
+.juz.active {
+    background-color: #2B5278;
+}
+
 
 /* منطقة الرسائل */
 .chat {
@@ -69,15 +82,34 @@ body {
     margin-top: 10px;
     font-size: 14px;
 }
+
+#time {
+    padding: 15px;
+    border-top: 1px solid #334155;
+    position: fixed;
+    bottom: 0;
+    right: 0;
+}
+
+#range-size {
+    padding:15px;
+    border-bottom:1px solid #334155;
+    position: fixed;
+    top: 0;
+    right: 0;
+}
 </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <h2>الأجزاء</h2>
+    <h2 id="ajza">الأجزاء</h2>
     <div id="juzList"></div>
-    <div style="padding:15px; border-bottom:1px solid #334155; position: fixed; top: 0; right: 0;">
+</div>
+
+<div id="range-size">
     <div style="margin-bottom:8px;">حجم الخط: <span id="fontValue">20</span></div>
+    
     <input 
         type="range" 
         id="fontSlider"
@@ -87,50 +119,71 @@ body {
         value="20"
         style="width:100%;"
     >
-    </div>
 </div>
+
+<h1 id="time">00:00</h1>
 
 <div dir="ltr" class="chat" id="chat"></div>
 
 <script>
 let pagesData, quranData;
+let timerInterval; // لتخزين interval
+let seconds = 0;   // عدد الثواني اللي عدت
+
+let ajzaElement = document.getElementById("ajza");
+let juzList = document.querySelector("#juzList");
+ajzaElement.onclick = () => {
+    Array.from(juzList.children)
+         .reverse()
+         .forEach(child => juzList.appendChild(child));
+}
+
+if(!localStorage.getItem("active-juz")) {
+    localStorage.setItem("active-juz", 1);
+}
 
 async function loadData() {
     pagesData = await fetch("./القرآن كتابة/pages.json").then(r => r.json());
     quranData = await fetch("./القرآن كتابة/whole_quran_tashkeel.json").then(r => r.json());
     buildSidebar();
+    active_juz(parseInt(localStorage.getItem("active-juz")));
 }
 
 function buildSidebar() {
     const juzList = document.getElementById("juzList");
 
-    let startPage = 1;
-
     for (let i = 1; i <= 30; i++) {
-        let pageCount;
-
-        if (i === 1) pageCount = 21;
-        else if (i === 30) pageCount = 23;
-        else pageCount = 20;
-
-        let endPage = startPage + pageCount - 1;
-
-        // نخزن القيم قبل ما تتغير
-        let s = startPage;
-        let e = endPage;
-
         let div = document.createElement("div");
         div.className = "juz";
+        div.dataset.juz = i;
         div.innerText = "الجزء " + i;
         div.onclick = function () {
-            loadJuz(s, e);
+            active_juz(i);
         };
 
-        if (i === 1) loadJuz(s, e);
-
         juzList.appendChild(div);
+    }
+}
 
-        startPage = endPage + 1;
+function active_juz(num) {
+    localStorage.setItem("active-juz", num);
+
+    const juzElements = document.querySelectorAll(".juz");
+    juzElements.forEach(el => {
+        el.classList.remove("active");
+    });
+
+    const activeJuz = document.querySelector(`.juz[data-juz="${num}"]`);
+    if (activeJuz) {
+        activeJuz.classList.add("active");
+    }
+
+    if (num === 1) {
+        loadJuz(1, 21);
+    } else if (num === 30) {
+        loadJuz(582, 604);
+    } else {
+        loadJuz((num - 1) * 20 + 2, (num - 1) * 20 + 22);
     }
 }
 
@@ -143,6 +196,38 @@ function loadJuz(start, end) {
     }
 
     chat.scrollTop = 0;
+
+    // إعادة ضبط الساعة
+    clearInterval(timerInterval);
+    seconds = 0;
+    document.getElementById("time").textContent = "00:00";
+
+    // شغل الساعة
+    timerInterval = setInterval(updateClock, 1000);
+
+}
+
+function updateClock() {
+    seconds++;
+    let hrs = Math.floor(seconds / 3600);
+    let mins = Math.floor((seconds % 3600) / 60);
+    let secs = seconds % 60;
+
+    let formatted;
+    if (hrs > 0) {
+        // ساعة أو أكتر → HH:MM:SS
+        formatted = 
+            String(hrs).padStart(2, '0') + ":" +
+            String(mins).padStart(2, '0') + ":" +
+            String(secs).padStart(2, '0');
+    } else {
+        // أقل من ساعة → MM:SS
+        formatted = 
+            String(mins).padStart(2, '0') + ":" +
+            String(secs).padStart(2, '0');
+    }
+
+    document.getElementById("time").textContent = formatted;
 }
 
 function createPageMessage(pageNumber) {
@@ -184,8 +269,6 @@ function getAyat(sura, from, to) {
         + "<br><br>";
 }
 
-loadData();
-
 const slider = document.getElementById("fontSlider");
 const fontValue = document.getElementById("fontValue");
 
@@ -204,7 +287,8 @@ slider.addEventListener("input", function () {
     fontValue.textContent = size;
     localStorage.setItem("quranFontSize", size);
 });
-</script>
 
+loadData();
+</script>
 </body>
 </html>
